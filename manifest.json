@@ -1,0 +1,38 @@
+{
+  "name": "Larvae Survey – Field Inspection",
+  "short_name": "Larvae Survey",
+  "description": "Mosquito larva field inspection app. Visit houses, take photos with GPS location, mark larva status and auto-generate PDF reports.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0e1a",
+  "theme_color": "#00d4aa",
+  "lang": "en",
+  "scope": "./",
+  "categories": ["health", "utilities"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "New Survey",
+      "short_name": "New Survey",
+      "description": "Start a new field survey session",
+      "url": "./",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

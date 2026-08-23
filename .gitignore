@@ -1,0 +1,16 @@
+# Secrets and Android signing keys
+*.keystore
+*.jks
+*.key
+
+# Local/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Generated Android output
+*.apk
+*.aab
+build/
+out/

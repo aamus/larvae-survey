@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Larvae Survey – Field Inspection App</title>
+  <meta name="description" content="Mobile field inspection app for mosquito larva surveys. Track house visits, GPS location, photos and generate PDF reports." />
+  <meta name="theme-color" content="#0a0e1a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Larvae Survey" />
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-512.jpg" />
+  <!-- Fonts loaded non-blocking -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ===== SPLASH SCREEN ===== -->
+  <div id="splash-screen" class="screen active">
+    <div class="splash-bg"></div>
+    <div class="splash-content">
+      <div class="splash-icon">🦟</div>
+      <h1>Larvae Survey</h1>
+      <p class="splash-sub">Field Inspection System</p>
+      <div class="splash-loader">
+        <div class="loader-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HOME SCREEN ===== -->
+  <div id="home-screen" class="screen">
+    <header class="app-header">
+      <div class="header-icon">🦟</div>
+      <div class="header-text">
+        <h1>Larvae Survey</h1>
+        <span>Field Inspection System</span>
+      </div>
+      <button class="icon-btn header-setup-btn" onclick="openSetup()" title="Setup saved names">⚙️</button>
+    </header>
+
+    <main class="home-main">
+      <div class="card glass-card">
+        <h2>Start New Survey</h2>
+        <p class="card-desc">Fill in the session details to begin a new field inspection round. Every field stays fully editable.</p>
+        <p class="prefill-hint">Prefilled from your saved list — tap ⚙️ Setup (top right) to switch collector, officer or zone.</p>
+
+        <div class="form-group">
+          <label for="worker-name">👤 Vector Collector Name</label>
+          <input type="text" id="worker-name" oninput="markManual('collector')" placeholder="Type name here" autocomplete="name" autocapitalize="words" autocorrect="off" spellcheck="false" />
+        </div>
+
+        <div class="form-group">
+          <label for="worker-designation">🏷️ Vector Collector Designation</label>
+          <!-- Quick-fill chips intentionally removed from the home screen —
+               designations are managed in the Setup screen instead. -->
+          <input type="text" id="worker-designation" oninput="markManual('collector')" placeholder="Type designation here" autocapitalize="words" autocorrect="off" spellcheck="false" />
+        </div>
+
+        <div class="form-group">
+          <label for="zone-number">📍 Zone Number</label>
+          <input type="text" id="zone-number" oninput="markManual('place')" placeholder="e.g. Zone-09" autocapitalize="characters" autocorrect="off" spellcheck="false" />
+        </div>
+
+        <div class="form-group">
+          <label for="area-name">🏘️ Area / Ward Name</label>
+          <input type="text" id="area-name" oninput="markManual('place')" placeholder="e.g. Mohakhali W-20 or Ward 20" autocapitalize="words" autocorrect="off" spellcheck="false" />
+        </div>
+
+        <div class="form-group">
+          <label for="supervisor-name">👨‍💼 Officer Name</label>
+          <input type="text" id="supervisor-name" oninput="markManual('officer')" placeholder="Type name here" autocapitalize="words" autocorrect="off" spellcheck="false" />
+        </div>
+
+        <div class="form-group">
+          <label for="supervisor-designation">🏷️ Officer Designation</label>
+          <!-- Quick-fill chips intentionally removed from the home screen —
+               designations are managed in the Setup screen instead. -->
+          <input type="text" id="supervisor-designation" oninput="markManual('officer')" placeholder="Type designation here" autocapitalize="words" autocorrect="off" spellcheck="false" />
+        </div>
+
+        <button id="start-survey-btn" class="btn btn-primary btn-lg" onclick="startSurvey()">
+          <span class="btn-icon">▶</span> Start Survey
+        </button>
+      </div>
+
+      <!-- Previous sessions -->
+      <div class="card glass-card" id="prev-sessions-card" style="display:none;">
+        <h3>📋 Previous Sessions</h3>
+        <div id="prev-sessions-list"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ===== SETUP SCREEN ===== -->
+  <div id="setup-screen" class="screen">
+    <header class="app-header">
+      <button class="back-btn" onclick="closeSetup()">← Back</button>
+      <div class="header-center">
+        <h2>⚙️ Setup</h2>
+        <span>Saved names &amp; zones</span>
+      </div>
+    </header>
+
+    <main class="home-main">
+      <div class="setup-hint">
+        Add the people and zones you work with once, then pick them in
+        <b>Quick Auto-Fill</b> below — the home screen form opens already filled in.
+        Tapping ⭐ on a saved row selects it too.
+      </div>
+
+      <!-- Active selection: what the home form gets prefilled with -->
+      <div class="card glass-card autofill-card">
+        <h3>⚡ Quick Auto-Fill</h3>
+        <p class="card-desc">Choose which saved entry the Start New Survey form should open with.</p>
+
+        <div class="form-group">
+          <label for="collector-select">👤 Vector Collector</label>
+          <select id="collector-select" onchange="onCollectorSelect(this.value)"></select>
+        </div>
+
+        <div class="form-group">
+          <label for="officer-select">👨‍💼 Officer</label>
+          <select id="officer-select" onchange="onOfficerSelect(this.value)"></select>
+        </div>
+
+        <div class="form-group">
+          <label for="place-select">📍 Zone / Area</label>
+          <select id="place-select" onchange="onPlaceSelect(this.value)"></select>
+        </div>
+
+        <div id="selector-empty-hint" class="setup-hint" style="display:none;">
+          Nothing saved yet — add a collector, officer or zone below, or just type the details on the home screen and they’ll be remembered automatically.
+        </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" id="auto-save-new" checked onchange="toggleAutoSaveNew(this.checked)" />
+          <span>Automatically remember new names I type</span>
+        </label>
+      </div>
+
+      <!-- Vector Collectors -->
+      <div class="card glass-card">
+        <h3>👤 Vector Collectors <span class="count-pill" id="count-collectors">0</span></h3>
+        <div class="setup-list" id="setup-collector-list"></div>
+        <div class="setup-add">
+          <input type="text" id="new-collector-name" placeholder="Collector name" autocapitalize="words" autocorrect="off" spellcheck="false" />
+          <input type="text" id="new-collector-desig" placeholder="Designation (e.g. Vector Collector)" autocapitalize="words" autocorrect="off" spellcheck="false" />
+          <div class="quick-fill-row">
+            <span class="quick-fill-hint">Quick fill:</span>
+            <button type="button" class="quick-fill-chip" onclick="quickFillField('new-collector-desig','Vector Collector')">Vector Collector</button>
+            <button type="button" class="quick-fill-chip" onclick="quickFillField('new-collector-desig','Spray Man')">Spray Man</button>
+          </div>
+          <button class="btn btn-primary" onclick="addCollector()">＋ Add Collector</button>
+        </div>
+      </div>
+
+      <!-- Officers -->
+      <div class="card glass-card">
+        <h3>👨‍💼 Officers <span class="count-pill" id="count-officers">0</span></h3>
+        <div class="setup-list" id="setup-officer-list"></div>
+        <div class="setup-add">
+          <input type="text" id="new-officer-name" placeholder="Officer name" autocapitalize="words" autocorrect="off" spellcheck="false" />
+          <input type="text" id="new-officer-desig" placeholder="Designation (e.g. Vector Control Officer)" autocapitalize="words" autocorrect="off" spellcheck="false" />
+          <div class="quick-fill-row">
+            <span class="quick-fill-hint">Quick fill:</span>
+            <button type="button" class="quick-fill-chip" onclick="quickFillField('new-officer-desig','Vector Control Officer')">Vector Control Officer</button>
+            <button type="button" class="quick-fill-chip" onclick="quickFillField('new-officer-desig','Asst. Health Officer')">Asst. Health Officer</button>
+          </div>
+          <button class="btn btn-primary" onclick="addOfficer()">＋ Add Officer</button>
+        </div>
+      </div>
+
+      <!-- Zones / Areas -->
+      <div class="card glass-card">
+        <h3>📍 Zones / Areas <span class="count-pill" id="count-places">0</span></h3>
+        <div class="setup-list" id="setup-place-list"></div>
+        <div class="setup-add">
+          <input type="text" id="new-place-zone" placeholder="Zone number (e.g. Zone-09)" autocapitalize="characters" autocorrect="off" spellcheck="false" />
+          <input type="text" id="new-place-area" placeholder="Area / Ward name (e.g. Mohakhali W-20)" autocapitalize="words" autocorrect="off" spellcheck="false" />
+          <button class="btn btn-primary" onclick="addPlace()">＋ Add Zone / Area</button>
+        </div>
+      </div>
+
+      <!-- Backup -->
+      <div class="card glass-card">
+        <h3>💾 Backup</h3>
+        <p class="card-desc">Save your setup to a file, or load it onto another phone.</p>
+        <div class="setup-tools">
+          <button class="btn btn-outline" onclick="exportDirectory()">⬇️ Export</button>
+          <button class="btn btn-outline" onclick="document.getElementById('import-setup-input').click()">⬆️ Import</button>
+          <button class="btn btn-outline danger-outline" onclick="clearDirectory()">🗑️ Clear All</button>
+        </div>
+        <input type="file" id="import-setup-input" accept="application/json,.json" style="display:none;" onchange="importDirectory(event)" />
+      </div>
+
+      <div class="setup-footer">
+        <button class="btn btn-success btn-lg" onclick="closeSetup()">✅ Done</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- ===== SURVEY SCREEN ===== -->
+  <div id="survey-screen" class="screen">
+    <header class="app-header survey-header">
+      <button class="back-btn" onclick="goHome()">← Back</button>
+      <div class="header-center">
+        <h2 id="survey-zone-title">Zone Survey</h2>
+        <span id="survey-date-display"></span>
+      </div>
+      <div class="house-count-badge">
+        <span id="house-count">0</span>
+        <small>houses</small>
+      </div>
+    </header>
+
+    <!-- Progress bar -->
+    <div class="progress-container">
+      <div class="progress-bar-track">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="progress-label">
+        <span id="progress-text">0 / 15 minimum houses</span>
+        <span id="larva-stats"></span>
+      </div>
+    </div>
+
+    <!-- House entries list -->
+    <div class="house-list" id="house-list">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">🏠</div>
+        <p>No houses added yet.</p>
+        <p class="empty-sub">Tap the button below to add your first house entry.</p>
+      </div>
+    </div>
+
+    <!-- FAB: Add house -->
+    <button class="fab" id="add-house-fab" onclick="openAddHouseModal()">
+      <span>+</span>
+    </button>
+
+    <!-- Finish session button -->
+    <div class="survey-footer">
+      <button id="finish-btn" class="btn btn-success btn-lg" onclick="finishSurvey()" disabled>
+        ✅ Finish & Save PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== ADD HOUSE MODAL ===== -->
+  <div id="house-modal" class="modal-overlay" onclick="closeModalOutside(event)">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title">Add House Entry</h3>
+        <button class="modal-close" onclick="closeHouseModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Photo section (no change) -->
+        <div class="photo-section">
+          <div class="photo-preview" id="photo-preview">
+            <div class="photo-placeholder" id="photo-modal-placeholder">
+              <span>📷</span>
+              <p>Take Photo</p>
+            </div>
+            <img id="preview-img" src="" alt="House photo" style="display:none;" />
+          </div>
+          <div class="photo-actions">
+            <button class="btn btn-outline" onclick="capturePhoto()">📷 Camera</button>
+            <button class="btn btn-outline" onclick="document.getElementById('file-input').click()">🖼 Gallery</button>
+          </div>
+          <input type="file" id="file-input" accept="image/*" capture="environment" style="display:none;" onchange="handleFileInput(event)" />
+          <video id="camera-video" autoplay playsinline style="display:none;"></video>
+          <canvas id="camera-canvas" style="display:none;"></canvas>
+        </div>
+
+        <!-- 1) House / Address -->
+        <div class="form-group">
+          <label for="house-address">🏠 House / Address</label>
+          <input type="text" id="house-address" placeholder="e.g. House #12, Road 5" autocapitalize="words" autocorrect="off" spellcheck="false" />
+        </div>
+
+        <!-- 2) Larva Status -->
+        <div class="larva-toggle-group">
+          <p class="toggle-label">Larvae Status</p>
+          <div class="toggle-buttons">
+            <button id="btn-larva-found" class="toggle-btn toggle-found" onclick="setLarvaStatus('found')">
+              <span class="toggle-icon">✅</span>
+            </button>
+            <button id="btn-larva-not-found" class="toggle-btn toggle-not-found" onclick="setLarvaStatus('not_found')">
+              <span class="toggle-icon">❌</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3) Where larva found -->
+        <div class="form-group">
+          <label>🦟 Where was Larva Found? <span style="color:var(--text-muted);font-weight:400">(select if applicable)</span></label>
+          <div class="item-type-grid" id="item-type-grid">
+            <button type="button" class="item-type-btn" onclick="selectItemType(this, 'Flooded Floor')">🌊 Flooded Floor</button>
+            <button type="button" class="item-type-btn" onclick="selectItemType(this, 'Basement / Parking')">🚗 Basement / Parking</button>
+            <button type="button" class="item-type-btn" onclick="selectItemType(this, 'Water Drum')">🛢️ Water Drum</button>
+            <button type="button" class="item-type-btn" onclick="selectItemType(this, 'Water Meter')">🚰 Water Meter</button>
+            <button type="button" class="item-type-btn" onclick="selectItemType(this, 'Flower Pot')">🌷 Flower Pot</button>
+            <button type="button" class="item-type-btn" onclick="selectItemType(this, 'Bucket / Tub')">🛁 Bucket / Tub</button>
+            <button type="button" class="item-type-btn" onclick="selectItemType(this, 'Old Tire')">⭕ Old Tire</button>
+            <button type="button" class="item-type-btn" onclick="selectItemType(this, 'Water Container')">💧 Water Container</button>
+            <button type="button" class="item-type-btn" onclick="selectItemType(this, 'Plastic Pot')">♻️ Plastic Pot</button>
+            <button type="button" class="item-type-btn" onclick="selectItemType(this, 'Clay Pot')">🏺 Clay Pot</button>
+            <button type="button" class="item-type-btn" onclick="selectItemType(this, 'Drain / Gutter')">🚿 Drain / Gutter</button>
+            <button type="button" class="item-type-btn" id="btn-other-type" onclick="selectItemType(this, 'Other')">📦 Other</button>
+          </div>
+          <input type="text" id="item-type-other-text" class="item-type-other-input" placeholder="✏️ Describe the item..." style="display:none;" oninput="updateOtherType(this.value)" autocapitalize="sentences" autocorrect="off" spellcheck="false" />
+          <input type="hidden" id="item-type-value" value="" />
+        </div>
+
+        <!-- 4) Location -->
+        <div class="location-row" id="location-row">
+          <div class="location-icon">📍</div>
+          <div class="location-info">
+            <span id="location-text">Fetching location...</span>
+            <small id="location-accuracy"></small>
+          </div>
+          <button class="btn-icon-only" onclick="getLocation()" title="Refresh location">🔄</button>
+        </div>
+
+        <!-- 5) Notes (optional) — last -->
+        <div class="form-group">
+          <label for="house-notes">📝 Notes (optional)</label>
+          <textarea id="house-notes" placeholder="Any additional observations..." rows="2" autocapitalize="sentences" autocorrect="off" spellcheck="false"></textarea>
+        </div>
+
+        <!-- Time display -->
+        <div class="time-row">
+          <span>🕐</span>
+          <span id="entry-time-display"></span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeHouseModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveHouseEntry()">Save Entry</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===== CAMERA MODAL ===== -->
+  <div id="camera-modal" class="modal-overlay camera-modal-overlay" style="display:none;">
+    <div class="camera-container">
+      <video id="live-video" autoplay playsinline></video>
+      <canvas id="live-canvas" style="display:none;"></canvas>
+      <div class="camera-controls">
+        <button class="shutter-btn" onclick="takeSnapshot()">⬤</button>
+        <button class="btn btn-ghost camera-cancel" onclick="closeCamera()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== REPORT SCREEN ===== -->
+  <div id="report-screen" class="screen">
+    <header class="app-header">
+      <button class="back-btn" onclick="showScreen('survey-screen')">← Back</button>
+      <div class="header-center">
+        <h2>Survey Report</h2>
+      </div>
+      <button class="icon-btn" onclick="downloadPDF()" title="Download PDF">⬇️</button>
+    </header>
+
+    <div class="report-container" id="report-container">
+      <!-- Generated dynamically -->
+    </div>
+
+    <div class="report-footer">
+      <button class="btn btn-primary btn-lg" onclick="downloadPDF()">
+        📄 Download PDF
+      </button>
+      <button class="btn btn-ghost" onclick="startNewSession()">
+        🔄 New Session
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast"></div>
+
+  <script src="directory.js"></script>
+  <script src="app.js"></script>
+  <script src="bangla-text.js"></script>
+  <script src="report.js"></script>
+
+  <!-- jsPDF: bundled locally — works fully offline, no internet needed -->
+  <script src="libs/jspdf.umd.min.js"></script>
+  <script src="libs/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- Register Service Worker for PWA / offline use -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('SW registered:', reg.scope))
+          .catch(err => console.log('SW registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
