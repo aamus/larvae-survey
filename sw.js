@@ -3,7 +3,7 @@
 // Enables offline use & PWA install
 // =============================================
 
-const CACHE_NAME = 'larva-survey-v10'; // GitHub Pages subfolder-compatible cache
+const CACHE_NAME = 'larva-survey-v11'; // ward/time PDF names + native PDF share action
 
 // Resolve every local file against the folder containing this service worker.
 // This works at both a root domain and a project URL such as

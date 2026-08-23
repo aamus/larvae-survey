@@ -120,7 +120,13 @@ function buildReportScreen(session) {
 // PDF GENERATION  (jsPDF + autoTable + Bangla font)
 // ====================================================
 
-function downloadPDF(autoMode = false, retries = 0) {
+// Generate and share the PDF through the phone's native share sheet.
+// On Android, WhatsApp appears there when it is installed.
+function sharePDF() {
+  downloadPDF(false, 0, true);
+}
+
+function downloadPDF(autoMode = false, retries = 0, shareMode = false) {
   const session = currentSession;
   if (!session || !session.houses) {
     showToast('⚠️ No session data to export');
@@ -137,7 +143,7 @@ function downloadPDF(autoMode = false, retries = 0) {
 
   if (!jsPDFReady || !autoTableReady) {
     if (retries < 20) {
-      setTimeout(() => downloadPDF(autoMode, retries + 1), 500);
+      setTimeout(() => downloadPDF(autoMode, retries + 1, shareMode), 500);
       if (retries === 0) showToast('⏳ Loading PDF engine...', 5000);
     } else {
       // All retries exhausted — try dynamically loading from CDN as last resort
@@ -145,7 +151,7 @@ function downloadPDF(autoMode = false, retries = 0) {
       _loadPDFLibsFromCDN(() => {
         const ok = window.jspdf?.jsPDF && window.jspdf.jsPDF.API?.autoTable;
         if (ok) {
-          buildAndSavePDF(session, autoMode).catch(err => {
+          buildAndSavePDF(session, autoMode, shareMode).catch(err => {
             showToast('❌ PDF failed: ' + (err?.message || String(err)));
           });
         } else {
@@ -157,7 +163,8 @@ function downloadPDF(autoMode = false, retries = 0) {
   }
 
   if (autoMode) showToast('📄 Preparing PDF…', 3000);
-  buildAndSavePDF(session, autoMode).catch(err => {
+  if (shareMode) showToast('📤 Preparing PDF to share…', 3000);
+  buildAndSavePDF(session, autoMode, shareMode).catch(err => {
     console.error('[PDF] Generation error:', err);
     showToast('❌ PDF failed: ' + (err?.message || String(err)));
   });
@@ -182,7 +189,7 @@ function _loadPDFLibsFromCDN(callback) {
 // -------------------------------------------------------
 // ASYNC PDF BUILDER
 // -------------------------------------------------------
-async function buildAndSavePDF(session, autoMode) {
+async function buildAndSavePDF(session, autoMode, shareMode = false) {
   const { jsPDF } = window.jspdf;
   // compress: true — Bangla runs are embedded as (highly compressible)
   // images, so stream compression keeps Bangla reports roughly the same
@@ -484,39 +491,96 @@ async function buildAndSavePDF(session, autoMode) {
     });
   }
 
-  // ---- Save ----
-  doc.save(buildPdfFilename(session));
-  showToast('\ud83d\udcc4 PDF saved!');
+  // ---- Save or share ----
+  const filename = buildPdfFilename(session);
+  if (shareMode) {
+    await sharePdfDocument(doc, filename, session);
+  } else {
+    doc.save(filename);
+    showToast('📄 PDF saved!');
+  }
+}
+
+// Shares the generated PDF through the browser/phone share sheet. Android
+// lists WhatsApp here when installed. Browsers that cannot share files fall
+// back to downloading the exact same PDF so the report is never lost.
+async function sharePdfDocument(doc, filename, session) {
+  const blob = doc.output('blob');
+
+  try {
+    if (typeof File !== 'function' || typeof navigator.share !== 'function') {
+      throw new Error('File sharing is not supported');
+    }
+
+    const file = new File([blob], filename, { type: 'application/pdf' });
+    if (typeof navigator.canShare === 'function' && !navigator.canShare({ files: [file] })) {
+      throw new Error('This device cannot share PDF files');
+    }
+
+    const ward = getWardFilenamePart(session);
+    await navigator.share({
+      files: [file],
+      title: 'Larvae Survey PDF',
+      text: `${ward.replace('-', ' ')} larvae survey report`,
+    });
+    showToast('✅ PDF shared');
+  } catch (err) {
+    // Closing the Android share sheet is not an error and should not create
+    // an unwanted download.
+    if (err && err.name === 'AbortError') return;
+
+    console.warn('[PDF share] Falling back to download:', err);
+    doc.save(filename);
+    showToast('📥 Sharing unavailable — PDF downloaded instead', 5000);
+  }
 }
 
 // ====================================================
 // PDF FILE NAME
 // ----------------------------------------------------
-// Format:  Larvae_survey_Zone-03_16_August_02-15-30_PM.pdf
+// Format: ward-25_23-08-26_14-30-02.pdf
+//         ward    survey date   current time to seconds
 //
-// The download time (to the second) is part of the name on purpose: every
-// export is therefore a NEW file, so the phone never asks to overwrite and
-// never appends "(1)", "(2)" — and two rounds in the same zone on the same
-// day stay side by side instead of clashing.
+// The current hour, minute and second keep every export unique, so phones do
+// not ask to overwrite a previous report or append "(1)", "(2)", etc.
 // ====================================================
 function buildPdfFilename(session) {
   const now = new Date();
-
-  // Day + month of the SURVEY (e.g. "16_August"), not of the download
   const surveyDate = session.startTime ? new Date(session.startTime) : now;
-  const day   = String(surveyDate.getDate()).padStart(2, '0');
-  const month = surveyDate.toLocaleDateString('en-GB', { month: 'long' });
+  const safeSurveyDate = Number.isNaN(surveyDate.getTime()) ? now : surveyDate;
 
-  // Current time, 12-hour, filename-safe: 02-15-30_PM
-  let h = now.getHours();
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  h = h % 12 || 12;
-  const time = `${String(h).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-` +
-               `${String(now.getSeconds()).padStart(2, '0')}_${ampm}`;
+  const date = [
+    String(safeSurveyDate.getDate()).padStart(2, '0'),
+    String(safeSurveyDate.getMonth() + 1).padStart(2, '0'),
+    String(safeSurveyDate.getFullYear()).slice(-2),
+  ].join('-');
 
-  const zone = sanitizeForFilename(session.zoneNumber) || 'Zone';
+  const time = [
+    String(now.getHours()).padStart(2, '0'),
+    String(now.getMinutes()).padStart(2, '0'),
+    String(now.getSeconds()).padStart(2, '0'),
+  ].join('-');
 
-  return `Larvae_survey_${zone}_${day}_${month}_${time}.pdf`;
+  return `${getWardFilenamePart(session)}_${date}_${time}.pdf`;
+}
+
+// Accepts entries such as "Ward 25", "Ward-25", "W-25",
+// "Mohakhali W-25", plain "25", and Bangla digits such as "ওয়ার্ড ২৫".
+function getWardFilenamePart(session) {
+  const banglaDigits = '০১২৩৪৫৬৭৮৯';
+  const rawArea = String(session?.areaName || '').trim();
+  const area = rawArea.replace(/[০-৯]/g, d => String(banglaDigits.indexOf(d)));
+
+  const labelled = area.match(/(?:ward|w|ওয়ার্ড|ওয়ার্ড)\s*(?:no\.?\s*)?[-:#]?\s*(\d{1,3}[a-z]?)/i);
+  const anyNumber = area.match(/\d{1,3}[a-z]?/i);
+  const wardNumber = labelled?.[1] || anyNumber?.[0];
+
+  if (wardNumber) return `ward-${wardNumber.toUpperCase()}`;
+
+  const areaFallback = sanitizeForFilename(rawArea)
+    .replace(/^(?:ward|w)[_-]*/i, '')
+    .slice(0, 35);
+  return `ward-${areaFallback || 'unknown'}`;
 }
 
 // Strips characters Android/Windows/iOS reject in file names and collapses

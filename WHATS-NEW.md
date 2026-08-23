@@ -136,3 +136,20 @@ Old saved sessions keep whatever item type they were recorded with — nothing b
 - Bangla zone names are kept as-is (`Larvae_survey_অঞ্চল-০৯_16_August_...`). Characters phones reject in file names (`/ \ : * ? " < > |`) are stripped automatically, and an empty zone falls back to `Zone`.
 
 `sw.js` cache bumped to `larva-survey-v9`.
+
+---
+
+# Update 6 — Ward-based PDF names + Share PDF
+
+PDF exports now use the Area / Ward value plus survey date and current time down to the second.
+
+Example: `ward-25_23-08-26_14-30-02.pdf`
+
+- Recognises `Ward 25`, `Ward-25`, `W-25`, `Mohakhali W-25`, plain `25`, and Bangla ward digits.
+- The date is the survey start date in `DD-MM-YY` format.
+- The final `HH-MM-SS` is the export time, keeping every file unique.
+- The report screen now has a **📤 Share PDF** button. On supported Android browsers/PWAs it opens the native share sheet, where WhatsApp can be selected.
+- Cancelling the share sheet does not create an unwanted download.
+- Unsupported browsers safely download the PDF instead.
+
+`sw.js` cache bumped to `larva-survey-v11`.
