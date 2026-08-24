@@ -153,3 +153,17 @@ Example: `ward-25_23-08-26_14-30-02.pdf`
 - Unsupported browsers safely download the PDF instead.
 
 `sw.js` cache bumped to `larva-survey-v11`.
+
+---
+
+# Update 7 — Permanent verification QR in PDF header
+
+- The owner-supplied QR is now permanently embedded on **page 1, top-right** of every generated PDF.
+- Final approved placement: compact 19 mm card, lowered slightly to align with the report heading.
+- No label or caption is shown.
+- The white margin and teal outline are intentionally thin; navy/teal modules match the report theme.
+- QR payload remains exactly:
+  `MD IFTAKHER AHAMED / DNCC | ZONE-03 | MOHAKHALI`.
+- The QR image is embedded inside `report.js`, so PDF export and scanning remain fully offline.
+
+`sw.js` cache bumped to `larva-survey-v12`.

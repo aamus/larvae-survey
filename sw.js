@@ -3,7 +3,7 @@
 // Enables offline use & PWA install
 // =============================================
 
-const CACHE_NAME = 'larva-survey-v11'; // ward/time PDF names + native PDF share action
+const CACHE_NAME = 'larva-survey-v12'; // permanent compact verification QR in PDF header
 
 // Resolve every local file against the folder containing this service worker.
 // This works at both a root domain and a project URL such as
@@ -25,6 +25,7 @@ const ASSETS = [
   'icon-192.png',
   'larva-found.png',
   'larva-not-found.png',
+  'qr-code-report.png',                // fixed verification QR artwork
   'fonts/NotoSansBengali-Regular.ttf', // Bangla PDF font
   'libs/jspdf.umd.min.js',             // PDF engine — offline
   'libs/jspdf.plugin.autotable.min.js',// PDF table plugin — offline
